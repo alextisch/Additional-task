@@ -1,0 +1,49 @@
+name: C++ Build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up CMake
+        run: sudo apt-get install -y cmake libsfml-dev
+
+      - name: Create build directory
+        run: mkdir build && cd build && cmake .. && make
+
+      - name: Run the application
+        run: ./build/xonix
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up CMake
+        run: |
+          choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System'
+          choco install sfml
+
+      - name: Create build directory
+        run: |
+          mkdir build
+          cd build
+          cmake ..
+          cmake --build . --config Release
+
+      - name: Run the application
+        run: |
+          cd build
+          .xonix.exe
+
