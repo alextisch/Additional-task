@@ -15,11 +15,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
+      - name: Install SFML
+        run: sudo apt-get update && sudo apt-get install -y libsfml-dev
+
       - name: Set up CMake
-        run: sudo apt-get install -y cmake libsfml-dev
+        run: sudo apt-get install -y cmake
 
       - name: Create build directory
-        run: mkdir build && cd build && cmake .. && make
+        run: |
+          mkdir build
+          cd build
+          cmake ..
+          make
 
       - name: Run the application
         run: ./build/xonix
@@ -30,7 +37,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Set up CMake
+      - name: Install CMake and SFML
         run: |
           choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System'
           choco install sfml
@@ -46,4 +53,3 @@ jobs:
         run: |
           cd build
           .xonix.exe
-
