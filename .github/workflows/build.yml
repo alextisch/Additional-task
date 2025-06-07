@@ -54,14 +54,14 @@ jobs:
 
       - name: Upload DEB artifact(gcc)
         uses: actions/upload-artifact@v4
-        if: matrix.compiler == "gcc"
+        if: matrix.compiler == 'gcc'
         with:
           name: xonix-deb-package-gcc
           path: xonix_1.0-0_amd64.deb
 
       - name: Upload DEB artifact(clang)
         uses: actions/upload-artifact@v4
-        if: matrix.compiler == "clang"
+        if: matrix.compiler == 'clang'
         with:
           name: xonix-deb-package-clang
           path: xonix_1.0-0_amd64.deb
