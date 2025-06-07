@@ -64,26 +64,24 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-  
+    
       - name: Install dependencies
         run: |
           choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' -y
-          choco install sfml -y
-
+          choco install sfml-dev -y --version=2.5.1
+  
       - name: Set SFML paths
         run: |
-          $SFMLPath = "C:\Program Files (x86)\SFML"
+          $SFMLPath = "C:\Program Files\SFML-2.5.1"
           echo "SFML_DIR=$SFMLPath" >> $env:GITHUB_ENV
           echo "CMAKE_PREFIX_PATH=$SFMLPath" >> $env:GITHUB_ENV
           echo "PATH=$env:PATH;$SFMLPath\bin" >> $env:GITHUB_ENV
-
+  
       - name: Build with CMake
         run: |
           mkdir build
           cd build
-          cmake -G "Visual Studio 17 2022" -A x64 `
-          -DSFML_DIR="$env:SFML_DIR" `
-          -DCMAKE_PREFIX_PATH="$env:CMAKE_PREFIX_PATH" ..
+          cmake -G "Visual Studio 17 2022" -A x64 ..
           cmake --build . --config Release
 
       - name: Create MSI package
