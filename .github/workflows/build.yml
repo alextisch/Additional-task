@@ -64,11 +64,6 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-  
-    - name: Install CMake
-      run: |
-        choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' -y
-        refreshenv
 
     - name: Download and install SFML
       shell: pwsh
