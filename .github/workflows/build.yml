@@ -36,11 +36,9 @@ jobs:
 
       - name: Create DEB package
         run: |
-          # Create package structure
           mkdir -p pkg/DEBIAN pkg/usr/games
           cp build/xonix pkg/usr/games/
 
-          # Create control file
           cat > pkg/DEBIAN/control <<EOF
           Package: xonix
           Version: 1.0-0
@@ -52,14 +50,20 @@ jobs:
           Description: Xonix game
            A classic Xonix game built with SFML.
           EOF
-
-          # Build package
           dpkg-deb --build pkg xonix_1.0-0_amd64.deb
 
-      - name: Upload DEB artifact
+      - name: Upload DEB artifact(gcc)
         uses: actions/upload-artifact@v4
+        if: matrix.compiler == "gcc"
         with:
-          name: xonix-deb-package
+          name: xonix-deb-package-gcc
+          path: xonix_1.0-0_amd64.deb
+
+      - name: Upload DEB artifact(clang)
+        uses: actions/upload-artifact@v4
+        if: matrix.compiler == "clang"
+        with:
+          name: xonix-deb-package-clang
           path: xonix_1.0-0_amd64.deb
 
   build-windows:
