@@ -96,22 +96,22 @@ jobs:
         cmake --build . --config Release --target xonix
 
     - name: Create MSI package
+      shell: pwsh
       run: |
         $productGuid = [guid]::NewGuid().ToString().ToUpper()
         $componentGuid = [guid]::NewGuid().ToString().ToUpper()
-
         @"
         <?xml version="1.0" encoding="UTF-8"?>
         <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
           <Product Id="*" Name="Xonix" Language="1033" Version="1.0.0.0" Manufacturer="YourCompany" UpgradeCode="$productGuid">
-            <Package InstallerVersion="200" Compressed="yes" Comments="Windows Installer Package"/>
+            <Package InstallerVersion="200" Compressed="yes" Comments="Windows Installer Package" Platform="x64"/>
             <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
             <MediaTemplate EmbedCab="yes"/>
           
             <Directory Id="TARGETDIR" Name="SourceDir">
               <Directory Id="ProgramFiles64Folder">
                 <Directory Id="INSTALLFOLDER" Name="Xonix">
-                  <Component Id="ApplicationFiles" Guid="$componentGuid">
+                  <Component Id="ApplicationFiles" Guid="$componentGuid" Win64="yes">
                     <File Id="XonixEXE" Name="xonix.exe" Source="build\Release\xonix.exe" KeyPath="yes"/>
                   </Component>
                 </Directory>
@@ -124,9 +124,8 @@ jobs:
           </Product>
         </Wix>
         "@ | Out-File -FilePath product.wxs -Encoding utf8
-
-        candle.exe -out product.wixobj product.wxs
-        light.exe -out xonix.msi product.wixobj
+        & "C:\Program Files (x86)\WiX Toolset v3.14\bin\candle.exe" -arch x64 -out product.wixobj product.wxs
+        & "C:\Program Files (x86)\WiX Toolset v3.14\bin\light.exe" -out xonix.msi product.wixobj
 
     - name: Upload MSI artifact
       uses: actions/upload-artifact@v4
