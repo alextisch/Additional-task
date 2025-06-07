@@ -9,6 +9,9 @@ on:
 jobs:
   build-linux:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        compiler: [gcc, clang]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
