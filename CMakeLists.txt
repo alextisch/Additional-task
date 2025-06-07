@@ -1,3 +1,4 @@
+cmake_minimum_required(VERSION 3.10)
 project(Xonix)
 
 find_package(SFML REQUIRED network audio graphics window system)
