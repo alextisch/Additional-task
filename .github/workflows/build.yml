@@ -65,34 +65,41 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
   
-    - name: Install CMake
+    - name: Install CMake (with PATH configuration)
+      shell: pwsh
       run: |
-        choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' -y
+        # Install CMake and explicitly add to PATH
+        choco install cmake.install --version=3.25.2 --installargs 'ADD_CMAKE_TO_PATH=System' -y
+        # Force refresh environment variables
+        Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
         refreshenv
+        # Verify CMake is accessible
+        cmake --version
 
     - name: Download and install SFML
+      shell: pwsh
       run: |
-        # Download SFML 2.5.1 for Visual Studio 2022 (vc17)
+        # Download SFML 2.5.1 for Visual Studio 2022
         $url = "https://www.sfml-dev.org/files/SFML-2.5.1-windows-vc17-64-bit.zip"
-        $output = "SFML-2.5.1.zip"
+        $output = "$env:RUNNER_TEMP\SFML-2.5.1.zip"
         Invoke-WebRequest -Uri $url -OutFile $output
         
-        # Extract to C:\SFML-2.5.1
-        Expand-Archive -Path $output -DestinationPath "C:\SFML-2.5.1"
+        # Extract to temporary directory
+        $sfmlPath = "C:\SFML-2.5.1"
+        Expand-Archive -Path $output -DestinationPath $sfmlPath
         
-        # Add SFML to system PATH
-        $sfmlPath = "C:\SFML-2.5.1\bin"
-        $env:Path += ";$sfmlPath"
-        echo "SFML_DIR=C:\SFML-2.5.1" >> $env:GITHUB_ENV
-        echo "CMAKE_PREFIX_PATH=C:\SFML-2.5.1" >> $env:GITHUB_ENV
-        echo "PATH=$env:PATH;$sfmlPath" >> $env:GITHUB_ENV
+        # Set environment variables
+        Write-Output "SFML_DIR=$sfmlPath" | Out-File -FilePath $env:GITHUB_ENV -Append
+        Write-Output "CMAKE_PREFIX_PATH=$sfmlPath" | Out-File -FilePath $env:GITHUB_ENV -Append
+        Write-Output "PATH=$env:PATH;$sfmlPath\bin" | Out-File -FilePath $env:GITHUB_ENV -Append
 
     - name: Build with CMake
+      shell: pwsh
       run: |
         mkdir build
         cd build
         cmake -G "Visual Studio 17 2022" -A x64 ..
-        cmake --build . --config Release
+        cmake --build . --config Release --target xonix
 
     - name: Create MSI package
       run: |
