@@ -15,8 +15,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Install SFML
-        run: sudo apt-get update && sudo apt-get install -y libsfml-dev
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y libsfml-dev xvfb
 
       - name: Set up CMake
         run: sudo apt-get install -y cmake
@@ -28,8 +28,8 @@ jobs:
           cmake ..
           make
 
-      - name: Run the application
-        run: ./build/xonix
+      - name: Run the application with Xvfb
+        run: xvfb-run ./build/xonix
 
   build-windows:
     runs-on: windows-latest
