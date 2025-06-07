@@ -1,60 +1,108 @@
-name: C++ Build
+name: Build Packages
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   pull_request:
-    branches:
-      - main
+    branches: [ main ]
 
 jobs:
   build-linux:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
-      - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y libsfml-dev xvfb
-
-      - name: Set up CMake
-        run: sudo apt-get install -y cmake
-
-      - name: Create build directory
+      - name: Install build dependencies
         run: |
-          mkdir build
-          cd build
-          cmake ..
-          make
+          sudo apt-get update
+          sudo apt-get install -y libsfml-dev cmake build-essential debhelper dh-make
 
-      - name: Run the application with Xvfb
-        run: xvfb-run ./build/xonix
+      - name: Configure and build
+        run: |
+          mkdir -p build
+          cd build
+          cmake -DCMAKE_BUILD_TYPE=Release ..
+          make -j$(nproc)
+
+      - name: Create DEB package
+        run: |
+          mkdir -p pkg/debian
+          # Basic debian package structure
+          echo "Source: xonix" > pkg/debian/control
+          echo "Section: games" >> pkg/debian/control
+          echo "Priority: optional" >> pkg/debian/control
+          echo "Maintainer: Your Name <your.email@example.com>" >> pkg/debian/control
+          echo "Build-Depends: debhelper (>=9), libsfml-dev" >> pkg/debian/control
+          echo "Standards-Version: 3.9.6" >> pkg/debian/control
+          echo "Package: xonix" >> pkg/debian/control
+          echo "Architecture: any" >> pkg/debian/control
+          echo "Depends: ${shlibs:Depends}, ${misc:Depends}, libsfml-system2.5, libsfml-window2.5, libsfml-graphics2.5" >> pkg/debian/control
+          echo "Description: Xonix game" >> pkg/debian/control
+          
+          # Install files
+          mkdir -p pkg/usr/games
+          cp build/xonix pkg/usr/games/
+          
+          # Build package
+          cd pkg
+          dpkg-deb --build . ../xonix_1.0_amd64.deb
+
+      - name: Upload DEB artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: xonix-deb-package
+          path: xonix_1.0_amd64.deb
 
   build-windows:
     runs-on: windows-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
-      - name: Install CMake and SFML
+      - name: Install dependencies
         run: |
-          choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System'
-          choco install sfml
+          choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' -y
+          choco install wixtoolset -y
 
-      - name: Set environment variables for SFML
-        run: |
-          echo "SFML_DIR=C:\Program Files (x86)\SFML" >> $GITHUB_ENV
-          echo "PATH=$env:PATH;C:\Program Files (x86)\SFML\bin" >> $GITHUB_ENV
-  
-      - name: Create build directory
+      - name: Build with CMake
         run: |
           mkdir build
           cd build
-          cmake -DSFML_DIR="C:\Program Files (x86)\SFML" ..
-          cmake --build . --config Release
+          cmake -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release ..
+          cmake --build . --config Release --target ALL_BUILD
 
-      - name: Run the application
+      - name: Create MSI package
         run: |
-          cd build/Release
-          .\xonix.exe
+          # Basic WXS template (simplified)
+          $wxsContent = @'
+          <?xml version="1.0"?>
+          <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+            <Product Id="*" Name="Xonix" Language="1033" Version="1.0.0" Manufacturer="YourCompany" UpgradeCode="PUT-GUID-HERE">
+              <Package InstallerVersion="200" Compressed="yes" Comments="Windows Installer Package"/>
+              <Media Id="1" Cabinet="media1.cab" EmbedCab="yes"/>
+              <Directory Id="TARGETDIR" Name="SourceDir">
+                <Directory Id="ProgramFilesFolder">
+                  <Directory Id="INSTALLDIR" Name="Xonix">
+                    <Component Id="ApplicationFiles" Guid="PUT-GUID-HERE">
+                      <File Id="ApplicationFile" Source="build\Release\xonix.exe"/>
+                    </Component>
+                  </Directory>
+                </Directory>
+              </Directory>
+              <Feature Id="DefaultFeature" Level="1">
+                <ComponentRef Id="ApplicationFiles"/>
+              </Feature>
+            </Product>
+          </Wix>
+          '@
+          New-Item -ItemType Directory -Path pkg
+          $wxsContent | Out-File -FilePath pkg\product.wxs -Encoding utf8
+          candle.exe -out pkg\product.wixobj pkg\product.wxs
+          light.exe -out xonix.msi pkg\product.wixobj
+
+      - name: Upload MSI artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: xonix-msi-package
+          path: xonix.msi
