@@ -62,62 +62,73 @@ jobs:
   build-windows:
     runs-on: windows-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Install dependencies
-        run: |
-          choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' -y
-          choco install sfml -y
+    - name: Checkout code
+      uses: actions/checkout@v4
   
-      - name: Set SFML paths
-        run: |
-          $SFMLPath = "C:\Program Files\SFML-2.5.1"
-          echo "SFML_DIR=$SFMLPath" >> $env:GITHUB_ENV
-          echo "CMAKE_PREFIX_PATH=$SFMLPath" >> $env:GITHUB_ENV
-          echo "PATH=$env:PATH;$SFMLPath\bin" >> $env:GITHUB_ENV
-  
-      - name: Build with CMake
-        run: |
-          mkdir build
-          cd build
-          cmake -G "Visual Studio 17 2022" -A x64 ..
-          cmake --build . --config Release
+    - name: Install CMake
+      run: |
+        choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' -y
+        refreshenv
 
-      - name: Create MSI package
-        run: |
-          $productGuid = [guid]::NewGuid().ToString().ToUpper()
-          $componentGuid = [guid]::NewGuid().ToString().ToUpper()
+    - name: Download and install SFML
+      run: |
+        # Download SFML 2.5.1 for Visual Studio 2022 (vc17)
+        $url = "https://www.sfml-dev.org/files/SFML-2.5.1-windows-vc17-64-bit.zip"
+        $output = "SFML-2.5.1.zip"
+        Invoke-WebRequest -Uri $url -OutFile $output
+        
+        # Extract to C:\SFML-2.5.1
+        Expand-Archive -Path $output -DestinationPath "C:\SFML-2.5.1"
+        
+        # Add SFML to system PATH
+        $sfmlPath = "C:\SFML-2.5.1\bin"
+        $env:Path += ";$sfmlPath"
+        echo "SFML_DIR=C:\SFML-2.5.1" >> $env:GITHUB_ENV
+        echo "CMAKE_PREFIX_PATH=C:\SFML-2.5.1" >> $env:GITHUB_ENV
+        echo "PATH=$env:PATH;$sfmlPath" >> $env:GITHUB_ENV
 
-          @"
-          <?xml version="1.0" encoding="UTF-8"?>
-          <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
-            <Product Id="*" Name="Xonix" Language="1033" Version="1.0.0.0" Manufacturer="YourCompany" UpgradeCode="$productGuid">
-              <Package InstallerVersion="200" Compressed="yes" Comments="Windows Installer Package"/>
-              <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
-              <MediaTemplate EmbedCab="yes"/>
-            
-              <Directory Id="TARGETDIR" Name="SourceDir">
-                <Directory Id="ProgramFiles64Folder">
-                  <Directory Id="INSTALLFOLDER" Name="Xonix">
-                    <Component Id="ApplicationFiles" Guid="$componentGuid">
-                      <File Id="XonixEXE" Name="xonix.exe" Source="build\Release\xonix.exe" KeyPath="yes"/>
-                    </Component>
-                  </Directory>
+    - name: Build with CMake
+      run: |
+        mkdir build
+        cd build
+        cmake -G "Visual Studio 17 2022" -A x64 ..
+        cmake --build . --config Release
+
+    - name: Create MSI package
+      run: |
+        $productGuid = [guid]::NewGuid().ToString().ToUpper()
+        $componentGuid = [guid]::NewGuid().ToString().ToUpper()
+
+        @"
+        <?xml version="1.0" encoding="UTF-8"?>
+        <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+          <Product Id="*" Name="Xonix" Language="1033" Version="1.0.0.0" Manufacturer="YourCompany" UpgradeCode="$productGuid">
+            <Package InstallerVersion="200" Compressed="yes" Comments="Windows Installer Package"/>
+            <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+            <MediaTemplate EmbedCab="yes"/>
+          
+            <Directory Id="TARGETDIR" Name="SourceDir">
+              <Directory Id="ProgramFiles64Folder">
+                <Directory Id="INSTALLFOLDER" Name="Xonix">
+                  <Component Id="ApplicationFiles" Guid="$componentGuid">
+                    <File Id="XonixEXE" Name="xonix.exe" Source="build\Release\xonix.exe" KeyPath="yes"/>
+                  </Component>
                 </Directory>
               </Directory>
-            
-              <Feature Id="MainApplication" Title="Main Application" Level="1">
-                <ComponentRef Id="ApplicationFiles"/>
-              </Feature>
-            </Product>
-          </Wix>
-          "@ | Out-File -FilePath product.wxs -Encoding utf8
+            </Directory>
+          
+            <Feature Id="MainApplication" Title="Main Application" Level="1">
+              <ComponentRef Id="ApplicationFiles"/>
+            </Feature>
+          </Product>
+        </Wix>
+        "@ | Out-File -FilePath product.wxs -Encoding utf8
 
-          candle.exe -out product.wixobj product.wxs
-          light.exe -out xonix.msi product.wixobj
+        candle.exe -out product.wixobj product.wxs
+        light.exe -out xonix.msi product.wixobj
 
-      - name: Upload MSI artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: xonix-msi-package
-          path: xonix.msi
+    - name: Upload MSI artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: xonix-msi-package
+        path: xonix.msi
