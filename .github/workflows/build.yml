@@ -42,14 +42,19 @@ jobs:
           choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System'
           choco install sfml
 
+      - name: Set environment variables for SFML
+        run: |
+          echo "SFML_DIR=C:\Program Files (x86)\SFML" >> $GITHUB_ENV
+          echo "PATH=$env:PATH;C:\Program Files (x86)\SFML\bin" >> $GITHUB_ENV
+  
       - name: Create build directory
         run: |
           mkdir build
           cd build
-          cmake ..
+          cmake -DSFML_DIR="C:\Program Files (x86)\SFML" ..
           cmake --build . --config Release
 
       - name: Run the application
         run: |
-          cd build
-          .xonix.exe
+          cd build/Release
+          .\xonix.exe
