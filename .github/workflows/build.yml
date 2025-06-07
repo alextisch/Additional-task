@@ -65,30 +65,29 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
   
-    - name: Install CMake (with PATH configuration)
-      shell: pwsh
-      run: |
-        # Install CMake and explicitly add to PATH
-        choco install cmake.install --version=3.25.2 --installargs 'ADD_CMAKE_TO_PATH=System' -y
-        # Force refresh environment variables
-        Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
-        refreshenv
-        # Verify CMake is accessible
-        cmake --version
+    - name: Install CMake
+      uses: actions/setup-cmake@v3
+      with:
+        cmake-version: '3.25.2'
 
     - name: Download and install SFML
       shell: pwsh
       run: |
-        # Download SFML 2.5.1 for Visual Studio 2022
-        $url = "https://www.sfml-dev.org/files/SFML-2.5.1-windows-vc17-64-bit.zip"
+        $url = "https://github.com/SFML/SFML/releases/download/2.5.1/SFML-2.5.1-windows-vc15-64-bit.zip"
         $output = "$env:RUNNER_TEMP\SFML-2.5.1.zip"
-        Invoke-WebRequest -Uri $url -OutFile $output
         
-        # Extract to temporary directory
+ 
+        Write-Output "Downloading SFML from $url"
+        Invoke-WebRequest -Uri $url -OutFile $output -UserAgent "GitHubActions"
+        
+    
+        if (-not (Test-Path $output)) {
+            throw "SFML download failed"
+        }
+
         $sfmlPath = "C:\SFML-2.5.1"
-        Expand-Archive -Path $output -DestinationPath $sfmlPath
-        
-        # Set environment variables
+        Expand-Archive -Path $output -DestinationPath $sfmlPath -Force
+    
         Write-Output "SFML_DIR=$sfmlPath" | Out-File -FilePath $env:GITHUB_ENV -Append
         Write-Output "CMAKE_PREFIX_PATH=$sfmlPath" | Out-File -FilePath $env:GITHUB_ENV -Append
         Write-Output "PATH=$env:PATH;$sfmlPath\bin" | Out-File -FilePath $env:GITHUB_ENV -Append
